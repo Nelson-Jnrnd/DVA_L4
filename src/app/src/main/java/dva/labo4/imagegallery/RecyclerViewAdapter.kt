@@ -1,6 +1,7 @@
 package dva.labo4.imagegallery
 
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -9,8 +10,26 @@ import kotlinx.coroutines.*
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
+import java.io.File
+import java.io.FileOutputStream
 
-class RecyclerViewAdapter(var coroutineScope: CoroutineScope) : androidx.recyclerview.widget.RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder>() {
+
+class RecyclerViewAdapter(var coroutineScope: CoroutineScope, var cacheDir: File ) : androidx.recyclerview.widget.RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder>() {
+
+   private fun readCache(url: String): Bitmap? {
+       val file = File(cacheDir, url.hashCode().toString())
+        if (file.exists()) {
+            return BitmapFactory.decodeFile(file.absolutePath)
+        }
+        return null
+    }
+
+    private fun writeCache(url: String, bitmap: Bitmap) {
+        val file = File(cacheDir, url.hashCode().toString())
+        val fos = FileOutputStream(file)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+        fos.close()
+    }
 
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
         val view = android.view.LayoutInflater.from(parent.context).inflate(R.layout.recyclerview_item, parent, false)
@@ -33,8 +52,10 @@ class RecyclerViewAdapter(var coroutineScope: CoroutineScope) : androidx.recycle
         fun bind(position: Int) {
             onGoingJob?.cancel()
             onGoingJob = coroutineScope.launch {
+                bmp = readCache("https://daa.iict.ch/images/$position.jpg")
                 if (bmp == null) {
                     bmp = downloadImage(position)
+                    writeCache("https://daa.iict.ch/images/$position.jpg", bmp!!)
                 }
                 displayImage(image, bmp)
             }
