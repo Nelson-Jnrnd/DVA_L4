@@ -1,6 +1,7 @@
 package dva.labo4.imagegallery
 
 import CacheClearer
+import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
@@ -15,6 +16,8 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
+    // latinit var recyclerView: RecyclerView
+    private lateinit var recyclerView: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val recyclerViewAdapter = RecyclerViewAdapter(lifecycleScope,cacheDir)
@@ -22,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        recyclerView = findViewById(R.id.recyclerView)
         recyclerView.adapter = recyclerViewAdapter
         recyclerView.layoutManager = GridLayoutManager(this, 3)
 
@@ -32,11 +35,12 @@ class MainActivity : AppCompatActivity() {
             .build()
         workManager.enqueue(clearer)
     }
+    @SuppressLint("NotifyDataSetChanged")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId) {
             R.id.main_menu_action -> {
-                //WorkManager.getInstance(applicationContext).enqueue(OneTimeWorkRequestBuilder<CacheClearer>().build())
-                //TODO fait des trucs
+                WorkManager.getInstance(applicationContext).enqueue(OneTimeWorkRequestBuilder<CacheClearer>().build())
+                recyclerView.adapter?.notifyDataSetChanged()
                 true
             }
             else -> super.onOptionsItemSelected(item)
