@@ -4,77 +4,62 @@ import android.content.ContentValues.TAG
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import androidx.lifecycle.LifecycleCoroutineScope
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.findViewTreeLifecycleOwner
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import android.widget.ImageView
+import kotlinx.coroutines.*
 import java.io.IOException
+import java.io.InputStream
 import java.net.URL
 
-class RecyclerViewAdapter(private val data: List<String>/*, private val owner: LifecycleOwner*/) : androidx.recyclerview.widget.RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder>() {
-
+class RecyclerViewAdapter(var coroutineScope: CoroutineScope) : androidx.recyclerview.widget.RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
         val view = android.view.LayoutInflater.from(parent.context).inflate(R.layout.recyclerview_item, parent, false)
-
-        //val holder = ViewHolder(view, owner)
-
         return ViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind()
-    }
-
     override fun getItemCount(): Int {
-        return data.size
+        return 100
     }
 
-    inner class ViewHolder(itemView: android.view.View/*, private val owner : LifecycleOwner*/) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
-        private val textView = itemView.findViewById<android.widget.TextView>(R.id.displayedText)
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.bind(position)
+    }
 
-        fun bind() {
-            textView.text = data[adapterPosition]
-            /*
-            scope.launch(Dispatchers.IO) {
-                val bitmap = downloadImage( URL(" https://daa.iict.ch/images/$adapterPosition.jpg"))
-                withContext(Dispatchers.Main) {
-                    itemView.findViewById<android.widget.ImageView>(R.id.displayedImage).setImageBitmap(bitmap)
+    inner class ViewHolder(itemView: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
+        private val image = itemView.findViewById<ImageView>(R.id.displayedImage)
+        private var bmp :Bitmap ? = null
+        private var onGoingJob : Job? = null
+
+        fun bind(position: Int) {
+            onGoingJob?.cancel()
+            onGoingJob = coroutineScope.launch {
+                if (bmp == null) {
+                    bmp = downloadImage(position)
                 }
+                displayImage(image, bmp)
             }
-            */
         }
     }
 
-    suspend fun downloadImage(url : URL) : Bitmap = withContext(Dispatchers.IO) {
+    suspend fun downloadImage(nbImage : Int) : Bitmap = withContext(Dispatchers.IO) {
         try {
-            val stream = url.openStream()
-            val bitmap = BitmapFactory.decodeStream(stream)
-            stream.close()
-            bitmap
+            val input: InputStream = URL("https://daa.iict.ch/images/$nbImage.jpg").openStream()
+            val myBitmap = BitmapFactory.decodeStream(input)
+            yield()
+            myBitmap
         } catch (e: IOException) {
             Log.e(TAG, "Error while downloading image", e)
+            yield()
             throw e
         }
     }
-    suspend fun decodeImage(bytes : ByteArray?) : Bitmap? = withContext(Dispatchers.Default) {
-        try {
-            BitmapFactory.decodeByteArray(bytes, 0, bytes?.size ?: 0)
-        } catch (e: IOException) {
-            Log.w(TAG, "Exception while decoding image", e)
-            null
+    suspend fun displayImage(myImage: ImageView, bmp : Bitmap?) = withContext(Dispatchers.Main) {
+        if(bmp != null) {
+            myImage.setImageBitmap(bmp)
+            yield()
+        }else{
+            myImage.setImageResource(android.R.color.transparent)
+            yield()
         }
     }
-    suspend fun displayImage(bmp : Bitmap?) = withContext(Dispatchers.Main) {
-        /*
-        if(bmp != null)
-            myImage.setImageBitmap(bmp)
-        else
-            myImage.setImageResource(android.R.color.transparent)
-         */
-    }
-
 }
