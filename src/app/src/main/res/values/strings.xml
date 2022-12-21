@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ImageGallery</string>
+    <string name="name">Refresh</string>
 </resources>
